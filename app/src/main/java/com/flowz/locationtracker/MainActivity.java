@@ -2,16 +2,20 @@ package com.flowz.locationtracker;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.room.Room;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.flowz.locationtracker.room.MyAppDataBase;
+import com.flowz.locationtracker.room.MyPlace;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -24,15 +28,19 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.util.List;
+
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    TextView start, stop, show;
+    TextView  show;
+    Button start, stop;
     ImageView image;
     MapView mapView;
     public Double startLatitude;
     public Double startLongitude;
+    public static MyAppDataBase myAppDataBase;
     public static final String MAPVIEW_BUNDLE_KEY = "MapViewBundleKey";
     private FusedLocationProviderClient client;
 
@@ -45,6 +53,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         stop = findViewById(R.id.stop);
         show = findViewById(R.id.show_location);
         mapView = findViewById(R.id.mymap);
+
+        myAppDataBase = Room.databaseBuilder(this,MyAppDataBase.class,"locationdb").allowMainThreadQueries().build();
 
         client = LocationServices.getFusedLocationProviderClient(this);
 
@@ -59,43 +69,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapView.onCreate(mapViewBundle);
 
         mapView.getMapAsync(this);
-
-
-        if(ActivityCompat.checkSelfPermission(MainActivity.this, ACCESS_FINE_LOCATION)!= PackageManager.PERMISSION_GRANTED){
-            return;
-        }
-        client.getLastLocation().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
-            @Override
-            public void onSuccess(Location location) {
-
-                if (location!=null){
-                    //Toast.makeText(MainActivity.this, "you are hare"+location.toString(), Toast.LENGTH_LONG).show();
-
-                    startLatitude  = location.getLatitude();
-                    startLongitude = location.getLongitude();
-
-                    String startLocation = String.valueOf("LAT :" + startLatitude + " LONG :" + startLongitude);
-
-                    show.setText(startLocation);
-
-                }
-
-            }
-        });
-
-
+        
 
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                start.setVisibility(View.GONE);
+                stop.setVisibility(View.VISIBLE);
                 getLocation();
+                
+                MyPlace myPlace = new MyPlace();
+                myPlace.setId(1);
+                myPlace.setStartLatitude(startLatitude);
+                myPlace.setStartLongitude(startLongitude);
+                MainActivity.myAppDataBase.myDAO().addPlace(myPlace);
+
+
             }
         });
 
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                stop.setVisibility(View.GONE);
+                start.setVisibility(View.VISIBLE);
                 getLocation();
+                
+                MyPlace myPlace = new MyPlace();
+                myPlace.setId(2);
+                myPlace.setStopLatitude(startLatitude);
+                myPlace.setStopLongitude(startLongitude);
+                MainActivity.myAppDataBase.myDAO().addPlace(myPlace);
+
+                mapView.setVisibility(View.VISIBLE);
             }
         });
 
@@ -134,6 +140,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                    startLatitude  = location.getLatitude();
                    startLongitude = location.getLongitude();
+                   
+
+                    Toast.makeText(MainActivity.this, "Start location saved to Room database successfully", Toast.LENGTH_LONG).show();
 
                     String startLocation = String.valueOf("LAT :" + startLatitude + " LONG :" + startLongitude);
 
@@ -148,24 +157,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-       // LatLng FRAairport = new LatLng(50.0379, 8.5622);
-        LatLng FRAairport = new LatLng( startLatitude, startLongitude);
-        LatLng JFKairport = new LatLng(40.6435529, -73.78211390000001);
+        List<MyPlace> locations = MainActivity.myAppDataBase.myDAO().getPlaces();
+
+        Double startLA  = locations.get(0).getStartLatitude();
+        Double startLO  = locations.get(0).getStartLongitude();
+
+        Double stopLA  = locations.get(0).getStopLatitude();
+        Double stopLO  = locations.get(0).getStopLongitude();
+
+
+//        for (MyPlace place: locations){
+//
+//            int id = 1;
+//
+//            Double startLat = place.getStartLatitude();
+//            Double startLong = place.getStartLongitude();
+//
+//            startLA = startLat;
+//            startLO = startLong;
+//        }
+//
+
+        //LatLng FRAairport1 = new LatLng(50.0379, 8.5622);
+        //LatLng JFKairport1 = new LatLng(40.6435529, -73.78211390000001);
+        
+        LatLng StartLocation = new LatLng( startLA, startLO);
+        LatLng StopLocation = new LatLng(stopLA, stopLO);
+       
 
 
 
-        googleMap.addMarker(new MarkerOptions().position((FRAairport)).title("FRAairport"));
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(FRAairport));
+        googleMap.addMarker(new MarkerOptions().position((StartLocation)).title("StartLocation"));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(StartLocation));
         googleMap.addPolyline(new PolylineOptions()
                 .clickable(true)
-                .add(FRAairport)
-                .add(JFKairport)
+                .add(StartLocation)
+                .add(StopLocation)
                 .width(8f)
                 .color(getResources().getColor(R.color.colorAccent))
         );
 
         googleMap.addCircle(new CircleOptions()
-                .center(JFKairport)
+                .center(StopLocation)
                 .radius(50000.0)
                 .strokeWidth(3f)
                 .strokeColor(getResources().getColor(R.color.colorAccent))
