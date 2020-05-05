@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.widget.Toast;
 
 import com.flowz.locationtracker.MainActivity;
 import com.flowz.locationtracker.R;
@@ -18,6 +19,7 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
 
 import java.util.List;
 
@@ -65,11 +67,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         List<MyPlace> locations = MainActivity.myAppDataBase.myDAO().getPlaces();
 
-        Double startLA  = locations.get(0).getLatitude();
-        Double startLO  = locations.get(0).getLongitude();
+        Double startLA  = locations.get(0).getStartLatitude();
+        Double startLO  = locations.get(0).getStartLongitude();
 
-        Double stopLA  = locations.get(0).getStopLatitude();
-        Double stopLO  = locations.get(0).getStopLongitude();
+        Double stopLA  = locations.get(1).getStopLatitude();
+        Double stopLO  = locations.get(1).getStopLongitude();
+
+        String userLocations = String.valueOf("Start Location :" + startLA + " " + startLO  + " StopLocation " + stopLA + " " + startLO);
+
+
+
+        Toast.makeText(MapActivity.this, userLocations, Toast.LENGTH_LONG).show();
 
 
 //        for (MyPlace place: locations){
@@ -87,8 +95,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         //LatLng StartLocation = new LatLng(50.0379, 8.5622);
         //LatLng JFKairport1 = new LatLng(40.6435529, -73.78211390000001);
 
-        LatLng StartLocation = new LatLng( startLA, startLO);
-        LatLng StopLocation = new LatLng(stopLA, stopLO);
+        LatLng StartLocation = new LatLng(startLA, startLO);
+        LatLng StopLocation =  new LatLng(stopLA, stopLO);
+
+//        StartLocation.distanceTo(StopLocation);
+
+        Double distance =  SphericalUtil.computeDistanceBetween(StartLocation, StopLocation);
+
+        String showDistance = "Distance between both locations is :" + distance;
+
+        Toast.makeText(MapActivity.this, "Stop location ;" + showDistance , Toast.LENGTH_LONG).show();
+
 
 
 

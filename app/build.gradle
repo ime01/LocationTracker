@@ -33,4 +33,6 @@ dependencies {
     annotationProcessor "android.arch.persistence.room:compiler:2.2.5"
 
     implementation 'com.github.bumptech.glide:glide:4.0.0'
+
+    implementation 'com.google.maps.android:android-maps-utils:0.5+'
 }
