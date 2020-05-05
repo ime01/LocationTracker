@@ -10,11 +10,11 @@ public class MyPlace {
     @PrimaryKey
     private int id;
 
-    @ColumnInfo(name = "user_startLatitude")
-    private Double startLatitude;
+    @ColumnInfo(name = "user_Latitude")
+    private Double Latitude;
 
-    @ColumnInfo(name = "user_startLongitude")
-    private Double startLongitude;
+    @ColumnInfo(name = "user_Longitude")
+    private Double Longitude;
 
     @ColumnInfo(name = "user_stopLatitude")
     private Double stopLatitude;
@@ -30,23 +30,23 @@ public class MyPlace {
         this.id = id;
     }
 
-    public Double getStartLatitude() {
-        return startLatitude;
+    public Double getLatitude() {
+        return Latitude;
     }
 
-    public void setStartLatitude(Double startLatitude) {
-        this.startLatitude = startLatitude;
+    public void setLatitude(Double latitude) {
+        Latitude = latitude;
     }
 
-    public Double getStartLongitude() {
-        return startLongitude;
+    public Double getLongitude() {
+        return Longitude;
     }
 
-    public void setStartLongitude(Double startLongitude) {
-        this.startLongitude = startLongitude;
+    public void setLongitude(Double longitude) {
+        Longitude = longitude;
     }
 
-    public Double getStopLatitude() {
+        public Double getStopLatitude() {
         return stopLatitude;
     }
 
