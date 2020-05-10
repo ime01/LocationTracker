@@ -1,13 +1,19 @@
 package com.flowz.locationtracker;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.room.Room;
 
+import android.Manifest;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -16,7 +22,6 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.VideoView;
 
 import com.bumptech.glide.Glide;
 import com.flowz.locationtracker.map.MapActivity;
@@ -33,7 +38,9 @@ import com.google.maps.android.SphericalUtil;
 
 import java.util.List;
 
+import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.INTERNET;
 
 public class MainActivity extends AppCompatActivity  {
 
@@ -41,7 +48,10 @@ public class MainActivity extends AppCompatActivity  {
     Button start, stop, openMap;
     ImageView image;
 
-    //values to initialize postions and enable map setup, which are updated as we save to the RoomDatebase
+
+    Boolean connected = false;
+    Boolean stclicked = false;
+    Boolean spclicked = false;
     public Double startLatitude;
     public Double startLongitude;
     public Double stopLatitude;
@@ -76,6 +86,7 @@ public class MainActivity extends AppCompatActivity  {
         client = LocationServices.getFusedLocationProviderClient(this);
 
         requestPermission();
+        checkConnectionState();
 
         locationCallback = new LocationCallback(){
             @Override
@@ -95,7 +106,6 @@ public class MainActivity extends AppCompatActivity  {
 
                 MainActivity.myAppDataBase.myDAO().addPlace(myPlace);
 
-
                 String stopLocation = String.valueOf("Stop Location :" + "LAT :" + stopLatitude + " LONG :" + stopLongitude);
 
                 show.setText(stopLocation);
@@ -108,7 +118,8 @@ public class MainActivity extends AppCompatActivity  {
             public void onClick(View view) {
                 start.setVisibility(View.GONE);
                 stop.setVisibility(View.VISIBLE);
-                 getLocation();
+                getLocation();
+                stclicked = true;
 
                 image.setVisibility(View.VISIBLE);
                 walker.setVisibility(View.VISIBLE);
@@ -116,10 +127,8 @@ public class MainActivity extends AppCompatActivity  {
                 walker.setEllipsize(TextUtils.TruncateAt.MARQUEE);
                 walker.setMarqueeRepeatLimit(-1);
                 walker.setSelected(true);
-
             }
         });
-
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -129,26 +138,50 @@ public class MainActivity extends AppCompatActivity  {
                 walker.setVisibility(View.GONE);
 
                 requestLocation();
+                //getStopLocation();
+                spclicked = true;
+
+                getDistanceBetweenLocations();
 
             }
         });
-
 
         openMap.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                Intent openMapView = new Intent(MainActivity.this, MapActivity.class);
-                startActivity(openMapView);
+                if (stclicked.equals(true) && spclicked.equals(true)) {
+
+                    Intent openMapView = new Intent(MainActivity.this, MapActivity.class);
+                    startActivity(openMapView);
+
+                } else{
+                    Toast.makeText(MainActivity.this, "Ensure you have pressed the START and STOP buttons to set your locations before clicking OPEN IN MAP", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+    }
 
+    private void checkConnectionState() {
+        ConnectivityManager connectivityManager =(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager.getNetworkInfo(connectivityManager.TYPE_MOBILE).getState()== NetworkInfo.State.CONNECTED ||
+                connectivityManager.getNetworkInfo(connectivityManager.TYPE_WIFI).getState()== NetworkInfo.State.CONNECTED){
+            Toast.makeText(this, "Internet access granted", Toast.LENGTH_SHORT).show();
 
+        }else{
+            Toast.makeText(this, "PLEASE ENSURE INTERNET CONNECTION, FOR THE FIRST TIME USING THIS APP" , Toast.LENGTH_LONG).show();
 
+            Intent onMobileData = new Intent();
+            onMobileData.setComponent(new ComponentName("com.android.settings","com.android.settings.Settings$DataUsageSummaryActivity"));
+            startActivity(onMobileData);
+
+        }
     }
 
     private void requestLocation() {
         LocationRequest locationRequest = new LocationRequest();
+
+        //locationRequest.setSmallestDisplacement(1);
         //locationRequest.setInterval(1);
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
@@ -160,35 +193,56 @@ public class MainActivity extends AppCompatActivity  {
 
         List<MyPlace> locations = MainActivity.myAppDataBase.myDAO().getPlaces();
 
-//        Double startLA  = locations.get(locati  ons.size()-1).getLatitude();
-//        Double startLO  = locations.get(locations.size()-1).getLongitude();
 
-        Double startLA  = locations.get(0).getStartLatitude();
-        Double startLO  = locations.get(0).getStartLongitude();
+        Double startLA  = locations.get(locations.size()-1).getStartLatitude();
+        Double startLO  = locations.get(locations.size()-1).getStartLongitude();
 
-        Double stopLA  = locations.get(0).getStopLatitude();
-        Double stopLO  = locations.get(0).getStopLatitude();
+        Double stopLA  = locations.get(locations.size()-1).getStartLatitude();
+        Double stopLO  = locations.get(locations.size()-1).getStartLongitude();
 
-//        String a = startLA + "  " + startLO;
-//        String b = stopLA + "  " + stopLO;
+//        Double startLA  = locations.get(0).getStartLatitude();
+//        Double startLO  = locations.get(0).getStartLongitude();
+//
+//        Double stopLA  = locations.get(0).getStopLatitude();
+//        Double stopLO  = locations.get(0).getStopLatitude();
 
         LatLng StartLocation = new LatLng(startLA, startLO);
         LatLng StopLocation =  new LatLng(stopLA, stopLO);
 
-
-        //Toast.makeText(MainActivity.this, "Stop location ;" + a , Toast.LENGTH_LONG).show();
             Double distance =  SphericalUtil.computeDistanceBetween(StartLocation, StopLocation);
 
-            String showDistance = "Distance between both locations is :" + distance;
+            String startAndStop = "Start" + StartLocation + "Stop" + StopLocation;
 
-            Toast.makeText(this, "Stop location ;" + showDistance , Toast.LENGTH_LONG).show();
+            //String showDistance = "Distance between both locations is :" + distance;
+            //show.setText(startAndStop + distance);
 
+            Toast.makeText(this,  startAndStop  + distance, Toast.LENGTH_LONG).show();
 
     }
 
 
     private void requestPermission() {
+        if (Build.VERSION.SDK_INT >= 23){
+            if (checkSelfPermission(ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                    checkSelfPermission(ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                    checkSelfPermission(INTERNET) != PackageManager.PERMISSION_GRANTED){
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, INTERNET},1);
+            }
+        }
         ActivityCompat.requestPermissions(this,new String[]{ACCESS_FINE_LOCATION}, 10);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case 1:
+                if (grantResults[2]==PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                }else {
+                    Toast.makeText(this, "Permissions needed please GRANT permssions", Toast.LENGTH_SHORT).show();
+                }
+        }
     }
 
     public void getLocation() {
@@ -211,11 +265,9 @@ public class MainActivity extends AppCompatActivity  {
 
                      myPlace.setId(2);
                      myPlace.setStartLatitude(startLatitude);
-                     myPlace.setStartLongitude(stopLongitude);
+                     myPlace.setStartLongitude(startLongitude);
                      myPlace.setStopLatitude(0.0);
                      myPlace.setStopLongitude(0.0);
-
-
                      MainActivity.myAppDataBase.myDAO().addPlace(myPlace);
 
 //                    Toast.makeText(MainActivity.this, "Start location saved to Room database successfully", Toast.LENGTH_LONG).show();
